@@ -1,0 +1,188 @@
+from typing import Any
+from rich.console import Console
+from rich.table import Table
+from bms.backend.bms_functions import compound_interest, bms_db
+from bms.backend.database.models import RecurringDeposit
+
+console = Console()
+
+
+class TUI:
+    def __init__(self) -> None:
+        pass
+
+    def create_table(
+        self, name: str, column: list[str], rows: list[list[str]]
+    ):
+        table = Table(title=name)
+        for attribute in column:
+            table.add_column(str(attribute))
+
+        console.print(name, column, rows)
+
+        for record in rows:
+            if len(record) == len(column):
+                table.add_row(*tuple(record))
+
+        return table
+
+
+class AppFunctions:
+    def __init__(self) -> None:
+        self.db = bms_db
+        self.rd = RecurringDeposit
+
+    def add_rd(
+        self,
+        applicant: str,
+        bank: str,
+        P: float,
+        r: float,
+        n: int = 4,
+        t: int = 12,
+    ):
+        ci, amount = compound_interest(P, n, r, t)
+        rd_object = self.rd(
+            applicant=applicant,
+            bank=bank,
+            principal_amount=P,
+            interest=r,
+            compounding_periods=n,
+            interest_period_in_months=t,
+            maturity_amount=ci,
+            interest_amount=amount,
+        )
+        self.db.insert_records(model_object=rd_object)
+        return rd_object
+
+
+class App:
+    def __init__(self) -> None:
+        self.db = bms_db
+        self.rd = RecurringDeposit
+        self.calculate_and_add_rd_object = AppFunctions().add_rd
+
+    def add_rd(self):
+        applicant: str = console.input("Enter Your [bold white]Name[/]: ")
+        bank: str = console.input(
+            "Enter The Name of the [bold white]Bank[/]: "
+        )
+        P: float = float(
+            console.input(
+                "Enter the [bold italic yellow]Principal Amount[/]: "
+            )
+        )
+        r: float = float(
+            console.input("Enter the [bold italic yellow]Interest rate[/]: ")
+        )
+        n: int = int(
+            console.input(
+                "Enter the [bold italic yellow]Number of Compounding Periods[/] ([bold blue]Usually 4[/]): "
+            )
+        )
+
+        t: int = int(
+            console.input("Enter [bold italic yellow]Interest Period[/]: ")
+        )
+
+        self.calculate_and_add_rd_object(applicant, bank, P, r, n, t)
+
+    def show_rds(self):
+        tui = TUI()
+        result = self.db.read_records(model_class=RecurringDeposit)
+        title = "Recurring Deposits"
+        col = [
+            "Applicant",
+            "Bank",
+            "Principal",
+            "Maturity",
+            "Interest",
+            "Period",
+        ]
+        row = []
+        if result != None and len(result) > 0:
+            for data in result:
+                temp_val = []
+                temp_val.append(str(data.applicant))
+                temp_val.append(str(data.bank))
+                temp_val.append(str(round(data.principal_amount, 2)))
+                temp_val.append(str(round(data.maturity_amount, 2)))
+                temp_val.append(str(round(data.interest, 3)))
+                temp_val.append(str(data.interest_period_in_months))
+                row.append(temp_val)
+
+        table = tui.create_table(name=title, column=col, rows=row)
+        console.print(table)
+
+    def delete_rd(self):
+        tui = TUI()
+        result = self.db.read_records(model_class=RecurringDeposit)
+        title = "Recurring Deposits"
+        col = [
+            "RD Id.",
+            "Applicant",
+            "Bank",
+            "Principal",
+            "Maturity",
+            "Interest",
+            "Period",
+        ]
+        row = []
+        if result != None and len(result) > 0:
+            for data in result:
+                temp_val = []
+                temp_val.append(str(data.id))
+                temp_val.append(str(data.applicant))
+                temp_val.append(str(data.bank))
+                temp_val.append(str(round(data.principal_amount, 2)))
+                temp_val.append(str(round(data.maturity_amount, 2)))
+                temp_val.append(str(round(data.interest, 3)))
+                temp_val.append(str(data.interest_period_in_months))
+                row.append(temp_val)
+
+        table = tui.create_table(name=title, column=col, rows=row)
+        console.print(table)
+
+        id_of_the_object = console.input(
+            "Enter the [bold italic yellow]RD Id.[/] : "
+        )
+        while True:
+            if (
+                console.input(
+                    "Do you want to Proceed [bold red]Deleting ?[/] [green]( [yellow bold]Y[/]es / [red bold]N[/]o )[/]:"
+                )
+                .strip()[0]
+                .upper()
+                == "Y"
+            ):
+                self.db.delete_records(
+                    model_class=RecurringDeposit,
+                    where_and_to={"id": int(id_of_the_object)},
+                )
+                break
+            else:
+                continue
+
+
+if __name__ == "__main__":
+    app = App()
+    while True:
+        console.print(
+            "[bold italic yellow]BANK MANAGEMENT SYSTEM[/]".center(
+                console.size.width - len("BANK MANAGEMENT SYSTEM")
+            )
+        )
+        console.print(
+            "1. Add RD Information\n2. View RD Information\n3. Delete RD Information.\n4. Exit App"
+        )
+        option = console.input("Enter Your Choice: [blue](1 / 2 / 3 / 4)[/]: ")
+        if option.strip() == "1":
+            app.do_rd()
+        elif option.strip() == "2":
+            app.show_rds()
+        elif option.strip() == "3":
+            app.delete_rd()
+        elif option.strip() == "4":
+            break
+        else:
+            pass

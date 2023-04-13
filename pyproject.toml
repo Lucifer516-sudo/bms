@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "bms"
+version = "0.1.0"
+description = ""
+authors = ["Lucifer516-sudo <harishvengat02092005@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+sympy = "^1.11.1"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
